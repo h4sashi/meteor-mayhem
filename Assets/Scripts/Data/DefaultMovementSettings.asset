@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8aea4bd378c0b4ab3a0f817e1e14585e, type: 3}
   m_Name: DefaultMovementSettings
   m_EditorClassIdentifier: 
-  moveSpeed: 3
+  moveSpeed: 6
   acceleration: 20
   deceleration: 25
   rotationSpeed: 720
