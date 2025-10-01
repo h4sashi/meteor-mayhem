@@ -6375,6 +6375,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   movementSettings: {fileID: 11400000, guid: 5e1f21bdbf3b24fbeb2ee20819062fa7, type: 2}
+  dashSettings: {fileID: 11400000, guid: 52ad2622553d34cf9817513d639eb21b, type: 2}
   photonView: {fileID: 0}
   playerCamera: {fileID: 6417471412662964975}
   playerHead: {fileID: 2803134423500048383}

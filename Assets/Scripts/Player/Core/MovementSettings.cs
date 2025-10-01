@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Hanzo.Player.Movement.Core
+namespace Hanzo.Player.Core
 {
   [CreateAssetMenu(fileName = "MovementSettings", menuName = "Hanzo/Movement Settings")]
   public class MovementSettings : ScriptableObject

@@ -1,6 +1,6 @@
 using UnityEngine;
 using Hanzo.Core.Interfaces;
-using Hanzo.Player.Movement.Core;
+using Hanzo.Player.Core;
 
 namespace Hanzo.Player.Movement.States
 {
@@ -20,7 +20,7 @@ namespace Hanzo.Player.Movement.States
         {
             moveInput = input;
         }
-        
+
         public void Enter(IMovementController controller)
         {
             controller.Rigidbody.linearDamping = settings.GroundDrag;
