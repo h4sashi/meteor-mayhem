@@ -3,49 +3,79 @@ using Hanzo.Core.Interfaces;
 
 namespace Hanzo.Player.Movement.States
 {
-    public class DashingState : IMovementState
+public class DashingState : IMovementState
+{
+private IAbility dashAbility;
+
+    public DashingState(IAbility ability)
     {
-        private IAbility dashAbility;
-
-        public DashingState(IAbility ability)
+        dashAbility = ability;
+    }
+    
+    public void Enter(IMovementController controller)
+    {
+        Debug.Log("DashingState ENTERED");
+        
+        // Reduce drag during dash for smoother movement
+        controller.Rigidbody.linearDamping = 0f;
+        
+        // Set animation immediately on enter
+        if (controller.Animator != null)
         {
-            dashAbility = ability;
+            Debug.Log("Setting IsDashing animation on Enter");
+            controller.Animator.SetBool("DASH", true);
         }
-
-        public void Enter(IMovementController controller)
+        else
         {
-            Debug.Log("DashingState ENTERED");
-
-            // Reduce drag during dash for smoother movement
-            controller.Rigidbody.linearDamping = 0f;
-
-            // Turn OFF RUN animation when entering dash
-            if (controller.Animator != null)
-            {
-                controller.Animator.SetBool("RUN", false);
-            }
+            Debug.LogWarning("Animator is NULL on Enter");
         }
-
-        public void Update(IMovementController controller)
+        
+        // Optional: Disable gravity during dash
+        // controller.Rigidbody.useGravity = false;
+    }
+    
+    public void Update(IMovementController controller)
+    {
+        Debug.Log("DashingState Update called");
+        
+        // Dash ability handles the actual dash logic
+        // State just needs to monitor when dash is complete
+        
+        // Optional: Add dash animation trigger
+        if (controller.Animator != null)
         {
-            // No animation toggles here — ability is authoritative.
-            // Optionally monitor ability state to request transitions.
+            Debug.Log("Setting IsDashing animation to true");
+            controller.Animator.SetBool("DASH", true);
         }
-
-        public void Exit(IMovementController controller)
+        else
         {
-            Debug.Log("DashingState EXITED");
-
-            // Restore normal drag
-            controller.Rigidbody.linearDamping = 6f;
-
-            // State should not do animation resetting; the ability already turned IsDashing off in EndDash.
-        }
-
-        public bool CanTransitionTo(IMovementState newState)
-        {
-            // Can transition out of dash when ability is no longer active
-            return !dashAbility.IsActive && (newState is IdleState || newState is MovingState);
+            Debug.LogWarning("Animator is NULL in DashingState");
         }
     }
+    
+    public void Exit(IMovementController controller)
+    {
+        Debug.Log("DashingState EXITED");
+        
+        // Restore normal drag
+        controller.Rigidbody.linearDamping = 6f;
+        
+        // Optional: Re-enable gravity
+        // controller.Rigidbody.useGravity = true;
+        
+        // Reset animation
+        if (controller.Animator != null)
+        {
+            Debug.Log("Setting IsDashing animation to false on Exit");
+            controller.Animator.SetBool("DASH", false);
+        }
+    }
+    
+    public bool CanTransitionTo(IMovementState newState)
+    {
+        // Can transition out of dash when ability is no longer active
+        return !dashAbility.IsActive && (newState is IdleState || newState is MovingState);
+    }
+}
+
 }

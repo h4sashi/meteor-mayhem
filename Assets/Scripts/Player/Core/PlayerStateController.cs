@@ -30,9 +30,14 @@ namespace Hanzo.Player.Core
         // Components
         private PhotonView photonView;
         private Rigidbody rb;
+        private Animator animator;
         private Renderer[] playerRenderers;
         private Color[] originalColors;
         private GameObject activeStunVFX;
+        
+        // Animation parameter hashes
+        private static readonly int StunnedHash = Animator.StringToHash("STUNNED");
+        private static readonly int GetUpHash = Animator.StringToHash("GETUP");
         
         // Properties
         public bool IsStunned => isStunned;
@@ -47,6 +52,12 @@ namespace Hanzo.Player.Core
         {
             photonView = GetComponent<PhotonView>();
             rb = GetComponent<Rigidbody>();
+            animator = GetComponentInChildren<Animator>(true);
+            
+            if (animator == null)
+            {
+                Debug.LogWarning("PlayerStateController: No Animator found. Stun animations will not play.");
+            }
             
             // Cache all renderers for color tinting
             playerRenderers = GetComponentsInChildren<Renderer>();
@@ -104,6 +115,13 @@ namespace Hanzo.Player.Core
 
         private void StartStun(float duration)
         {
+            // Prevent re-entry if already stunned
+            if (isStunned)
+            {
+                Debug.LogWarning("StartStun called but player is already stunned. Ignoring.");
+                return;
+            }
+            
             if (stunCoroutine != null)
             {
                 StopCoroutine(stunCoroutine);
@@ -118,6 +136,13 @@ namespace Hanzo.Player.Core
             stunTimer = duration;
             
             Debug.Log($"Player stunned for {duration}s");
+            
+            // SET STUNNED ANIMATION
+            if (animator != null)
+            {
+                animator.SetBool(StunnedHash, true);
+                Debug.Log("✅ STUNNED animation parameter set to TRUE");
+            }
             
             // Apply visual effects
             ApplyStunVisuals();
@@ -135,21 +160,72 @@ namespace Hanzo.Player.Core
                 yield return null;
             }
             
-            // Restore
+            // START RECOVERY - Trigger Get Up animation
+            Debug.Log("Stun ended, starting Get Up animation");
+            
+            if (animator != null)
+            {
+                animator.SetBool(StunnedHash, false);
+                animator.SetBool(GetUpHash, true);
+                Debug.Log("✅ GETUP animation parameter set to TRUE");
+            }
+            
+            // Wait for Get Up animation to complete
+            // You can adjust this duration based on your Get Up animation length
+            float getUpDuration = GetAnimationLength("Get Up"); // We'll implement this helper
+            
+            if (getUpDuration <= 0)
+            {
+                getUpDuration = 0.8f; // Fallback duration
+                Debug.LogWarning("Could not determine Get Up animation length, using fallback: 0.8s");
+            }
+            
+            yield return new WaitForSeconds(getUpDuration);
+            
+            // RECOVERY COMPLETE
             isStunned = false;
             stunTimer = 0f;
             rb.linearDamping = originalDrag;
             
+            // Turn off Get Up animation
+            if (animator != null)
+            {
+                animator.SetBool(GetUpHash, false);
+                Debug.Log("✅ GETUP animation parameter set to FALSE");
+            }
+            
             RemoveStunVisuals();
             OnStunEnded?.Invoke();
             
-            Debug.Log("Player recovered from stun");
+            Debug.Log("Player fully recovered from stun");
             
             // Sync recovery to other clients
             if (photonView.IsMine)
             {
                 photonView.RPC("RPC_SyncStunState", RpcTarget.OthersBuffered, false, 0f);
             }
+        }
+        
+        /// <summary>
+        /// Helper to get animation clip length by state name
+        /// </summary>
+        private float GetAnimationLength(string stateName)
+        {
+            if (animator == null) return 0f;
+            
+            var controller = animator.runtimeAnimatorController;
+            if (controller == null) return 0f;
+            
+            foreach (var clip in controller.animationClips)
+            {
+                if (clip.name.Contains(stateName) || stateName.Contains(clip.name))
+                {
+                    Debug.Log($"Found animation clip '{clip.name}' with length: {clip.length}s");
+                    return clip.length;
+                }
+            }
+            
+            return 0f;
         }
 
         private void ApplyStunVisuals()
@@ -197,14 +273,60 @@ namespace Hanzo.Player.Core
             {
                 isStunned = true;
                 stunTimer = duration;
+                
+                if (animator != null)
+                {
+                    animator.SetBool(StunnedHash, true);
+                }
+                
                 ApplyStunVisuals();
+                
+                // Start a coroutine to handle get-up for remote players
+                StartCoroutine(RemoteStunVisualCoroutine(duration));
             }
             else
             {
                 isStunned = false;
                 stunTimer = 0f;
+                
+                if (animator != null)
+                {
+                    animator.SetBool(StunnedHash, false);
+                    animator.SetBool(GetUpHash, false);
+                }
+                
                 RemoveStunVisuals();
             }
+        }
+        
+        /// <summary>
+        /// Handles animation states for remote players viewing the stunned player
+        /// </summary>
+        private IEnumerator RemoteStunVisualCoroutine(float stunDuration)
+        {
+            // Wait for stun duration
+            yield return new WaitForSeconds(stunDuration);
+            
+            // Trigger get-up animation
+            if (animator != null)
+            {
+                animator.SetBool(StunnedHash, false);
+                animator.SetBool(GetUpHash, true);
+            }
+            
+            // Wait for get-up animation
+            float getUpDuration = GetAnimationLength("Get Up");
+            if (getUpDuration <= 0) getUpDuration = 0.8f;
+            
+            yield return new WaitForSeconds(getUpDuration);
+            
+            // Complete recovery
+            if (animator != null)
+            {
+                animator.SetBool(GetUpHash, false);
+            }
+            
+            RemoveStunVisuals();
         }
 
         private void OnGUI()

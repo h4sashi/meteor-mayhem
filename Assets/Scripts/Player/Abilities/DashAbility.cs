@@ -18,12 +18,13 @@ namespace Hanzo.Player.Abilities
         private Vector3 dashDirection;
         
         // STACKING SYSTEM
-        private int stackLevel = 1; // 1 = base, 2 = enhanced, 3 = chain
+        private int stackLevel = 1;
         private int chainDashesRemaining = 0;
-        private float chainDashWindow = 0.5f; // Time window to activate chain dash
+        private float chainDashWindow = 0.5f;
         private float chainDashTimer = 0f;
         
         private static readonly int IsDashingHash = Animator.StringToHash("DASH");
+        private static readonly int IsRunningHash = Animator.StringToHash("RUN");
         
         public string AbilityName => "Dash";
         public bool CanActivate => !isActive && (cooldownTimer <= 0f || chainDashesRemaining > 0);
@@ -50,6 +51,10 @@ namespace Hanzo.Player.Abilities
             {
                 Debug.LogError("DashAbility: No Animator found on player!");
             }
+            else
+            {
+                Debug.Log($"DashAbility: Animator found. Has DASH parameter? {HasParameter(animator, "DASH")}");
+            }
 
             if (vfxController == null && controller.Transform != null)
             {
@@ -57,6 +62,15 @@ namespace Hanzo.Player.Abilities
             }
             
             SetupTrailRenderer();
+        }
+        
+        private bool HasParameter(Animator anim, string paramName)
+        {
+            foreach (AnimatorControllerParameter param in anim.parameters)
+            {
+                if (param.name == paramName) return true;
+            }
+            return false;
         }
         
         private void SetupTrailRenderer()
@@ -86,24 +100,16 @@ namespace Hanzo.Player.Abilities
             return mat;
         }
         
-        /// <summary>
-        /// Add a stack level to the dash ability (called when picking up power-up)
-        /// </summary>
         public void AddStack()
         {
             if (stackLevel < 3)
             {
                 stackLevel++;
                 Debug.Log($"Dash stack increased to level {stackLevel}");
-                
-                // Update trail visual based on stack
                 UpdateTrailForStack();
             }
         }
         
-        /// <summary>
-        /// Reset stacks to base level
-        /// </summary>
         public void ResetStacks()
         {
             stackLevel = 1;
@@ -115,7 +121,6 @@ namespace Hanzo.Player.Abilities
         {
             if (trailRenderer == null) return;
             
-            // Make trail more intense with higher stacks
             switch (stackLevel)
             {
                 case 1:
@@ -137,7 +142,6 @@ namespace Hanzo.Player.Abilities
         {
             Debug.Log($"DashAbility.TryActivate - Stack: {stackLevel}, ChainRemaining: {chainDashesRemaining}");
             
-            // Check if we can dash (normal cooldown OR chain dash available)
             if (isActive) return false;
             
             bool canDashNormally = cooldownTimer <= 0f;
@@ -173,9 +177,23 @@ namespace Hanzo.Player.Abilities
                 trailRenderer.Clear();
             }
             
+            // FIX: Set animation parameters in correct order
             if (animator != null)
             {
+                // Turn OFF run first
+                
+                
+                // Wait one frame in Update to ensure RUN is off, then turn ON dash
+                // For now, set immediately with a debug check
                 animator.SetBool(IsDashingHash, true);
+                
+                
+                Debug.Log($"✅ DASH animation SET TO TRUE. Current DASH value: {animator.GetBool(IsDashingHash)}");
+                Debug.Log($"Animator enabled: {animator.enabled}, GameObject active: {animator.gameObject.activeInHierarchy}");
+            }
+            else
+            {
+                Debug.LogError("❌ Animator is NULL in TryActivate!");
             }
             
             if (vfxController != null)
@@ -188,13 +206,11 @@ namespace Hanzo.Player.Abilities
         
         public void Update()
         {
-            // Update cooldown
             if (cooldownTimer > 0f)
             {
                 cooldownTimer -= Time.deltaTime;
             }
             
-            // Update chain dash window
             if (chainDashesRemaining > 0)
             {
                 chainDashTimer -= Time.deltaTime;
@@ -205,12 +221,10 @@ namespace Hanzo.Player.Abilities
                 }
             }
             
-            // Update active dash
             if (isActive)
             {
                 dashTimer += Time.deltaTime;
                 
-                // Calculate duration and speed based on stack level
                 float actualDuration = GetDashDuration();
                 float normalizedTime = dashTimer / actualDuration;
                 
@@ -220,25 +234,28 @@ namespace Hanzo.Player.Abilities
                     return;
                 }
                 
-                // Apply dash force with stack multiplier
                 float curveValue = settings.DashSpeedCurve.Evaluate(normalizedTime);
                 float speedMultiplier = GetSpeedMultiplier();
                 Vector3 dashVelocity = dashDirection * (settings.DashSpeed * speedMultiplier * curveValue);
                 dashVelocity.y = controller.Velocity.y;
                 
                 controller.SetVelocity(dashVelocity);
+                
+                // DEBUG: Monitor animator state during dash
+                if (animator != null && dashTimer < 0.1f) // Only log in first 0.1s to avoid spam
+                {
+                    Debug.Log($"During dash - DASH param: {animator.GetBool(IsDashingHash)}");
+                }
             }
         }
         
         private float GetDashDuration()
         {
-            // Stack 2 (2x): Travels further = longer duration
             return stackLevel == 2 ? settings.DashDuration * 1.4f : settings.DashDuration;
         }
         
         private float GetSpeedMultiplier()
         {
-            // Stack 2 (2x): Travels further = faster speed
             return stackLevel == 2 ? 1.5f : 1f;
         }
         
@@ -247,10 +264,9 @@ namespace Hanzo.Player.Abilities
             isActive = false;
             cooldownTimer = settings.DashCooldown;
             
-            // Stack 3 (3x): Enable chain dash
             if (stackLevel == 3 && chainDashesRemaining == 0)
             {
-                chainDashesRemaining = 1; // Allow 1 additional dash (2 total)
+                chainDashesRemaining = 1;
                 chainDashTimer = chainDashWindow;
                 Debug.Log("Chain dash ready! Press dash again within 0.5s");
             }
@@ -260,6 +276,7 @@ namespace Hanzo.Player.Abilities
             if (animator != null)
             {
                 animator.SetBool(IsDashingHash, false);
+                Debug.Log($"✅ DASH animation SET TO FALSE in EndDash");
             }
             
             Debug.Log($"Dash ended. Cooldown: {cooldownTimer}s, Stack: {stackLevel}");

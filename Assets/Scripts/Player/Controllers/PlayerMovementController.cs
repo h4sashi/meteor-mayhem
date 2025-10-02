@@ -43,6 +43,7 @@ namespace Hanzo.Player.Controllers
         private IdleState idleState;
         private MovingState movingState;
         private DashingState dashingState;
+        private StunnedState stunnedState;
 
         // Properties from IMovementController
         public Vector3 Position => transform.position;
@@ -90,6 +91,14 @@ namespace Hanzo.Player.Controllers
         private void Start()
         {
             photonView = GetComponent<PhotonView>();
+            
+            // Subscribe to stun events to trigger state transitions
+            if (stateController != null)
+            {
+                stateController.OnStunStarted += HandleStunStarted;
+                stateController.OnStunEnded += HandleStunEnded;
+            }
+            
             SetupCamera();
         }
 
@@ -123,6 +132,7 @@ namespace Hanzo.Player.Controllers
         {
             idleState = new IdleState();
             movingState = new MovingState(movementSettings);
+            stunnedState = new StunnedState(stateController);
             
             currentState = idleState;
             currentState.Enter(this);
@@ -144,6 +154,13 @@ namespace Hanzo.Player.Controllers
                 inputHandler.OnMoveInput -= HandleMoveInput;
                 inputHandler.OnDashInput -= HandleDashInput;
             }
+            
+            // Unsubscribe from stun events
+            if (stateController != null)
+            {
+                stateController.OnStunStarted -= HandleStunStarted;
+                stateController.OnStunEnded -= HandleStunEnded;
+            }
         }
 
         private void Update()
@@ -157,20 +174,23 @@ namespace Hanzo.Player.Controllers
                     Debug.Log("DashingState initialized in Update");
                 }
                 
-                // CRITICAL: Block all movement updates if stunned
+                // PRIORITY 1: Check if stunned (highest priority)
+                // Only transition TO stunned state if not already in it
                 if (stateController != null && stateController.IsStunned)
                 {
-                    // Force idle animation during stun
-                    if (animator != null)
+                    // Only change state if we're NOT already in stunned state
+                    if (currentState != stunnedState)
                     {
-                        animator.SetBool(Locomotion.RUN.ToString(), false);
-                        animator.SetBool("DASH", false);
+                        Debug.Log("Player is stunned, forcing transition to StunnedState");
+                        ChangeState(stunnedState);
                     }
                     
-                    // Don't update movement state while stunned
-                    return;
+                    // Update stunned state (but don't re-enter)
+                    currentState?.Update(this);
+                    return; // Don't process other state logic while stunned
                 }
                 
+                // PRIORITY 2: Normal state updates
                 UpdateMovementState();
                 currentState?.Update(this);
             }
@@ -178,6 +198,10 @@ namespace Hanzo.Player.Controllers
 
         private void UpdateMovementState()
         {
+            // Don't update movement state if stunned (handled in Update())
+            if (stateController != null && stateController.IsStunned)
+                return;
+            
             // Priority 1: Check if dashing
             if (dashingState != null && abilityController != null && abilityController.DashAbility.IsActive)
             {
@@ -221,6 +245,33 @@ namespace Hanzo.Player.Controllers
                     if (animator != null)
                         animator.SetBool(Locomotion.RUN.ToString(), false);
                 }
+            }
+        }
+        
+        /// <summary>
+        /// Called when player gets stunned - forces transition to StunnedState
+        /// </summary>
+        private void HandleStunStarted()
+        {
+            Debug.Log("HandleStunStarted: Transitioning to StunnedState");
+            ChangeState(stunnedState);
+        }
+        
+        /// <summary>
+        /// Called when stun ends - returns to appropriate movement state
+        /// </summary>
+        private void HandleStunEnded()
+        {
+            Debug.Log("HandleStunEnded: Transitioning from StunnedState");
+            
+            // Check if player is holding movement input
+            if (inputHandler != null && inputHandler.MoveInput.magnitude > 0.1f)
+            {
+                ChangeState(movingState);
+            }
+            else
+            {
+                ChangeState(idleState);
             }
         }
 

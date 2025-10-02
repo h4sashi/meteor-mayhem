@@ -6178,6 +6178,7 @@ GameObject:
   - component: {fileID: 453229875398877094}
   - component: {fileID: -4652079744231020586}
   - component: {fileID: 3306072856315414700}
+  - component: {fileID: -5109069665145312434}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -6441,7 +6442,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3546674311411568189}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8efc6b1d64977384eb3405357896c656, type: 3}
   m_Name: 
@@ -6486,8 +6487,14 @@ MonoBehaviour:
     SynchronizeType: 1
     Name: RUN
   - Type: 4
-    SynchronizeType: 0
+    SynchronizeType: 1
     Name: DASH
+  - Type: 4
+    SynchronizeType: 0
+    Name: STUNNED
+  - Type: 4
+    SynchronizeType: 0
+    Name: GETUP
   m_SynchronizeLayers:
   - SynchronizeType: 0
     LayerIndex: 0
@@ -6517,7 +6524,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89df70215b127463c9ee8c71c12e92dc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 9
   knockbackDrag: 8
   stunVFXPrefab: {fileID: 0}
   stunTintColor: {r: 0.7, g: 0.7, b: 0.7, a: 1}
@@ -6569,7 +6576,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3546674311411568189}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 64179f3720bbfe947b7724caa67b7c1d, type: 3}
   m_Name: 
@@ -6585,9 +6592,21 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3546674311411568189}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d9bb77cfd08df4ddfbe7523686516d52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &-5109069665145312434
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3546674311411568189}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f71f2cc335f484e39a22aa97b09be12a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &3711478419337760614
