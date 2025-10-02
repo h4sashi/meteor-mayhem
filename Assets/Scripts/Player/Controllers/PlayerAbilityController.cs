@@ -10,25 +10,23 @@ namespace Hanzo.Player.Abilities
     {
         [Header("Settings")]
         [SerializeField] private AbilitySettings abilitySettings;
-
-
+        
         [Header("Debug")]
         [SerializeField] private bool showDebugInfo = false;
 
         private IMovementController movementController;
         private PhotonView photonView;
         private List<IAbility> abilities = new List<IAbility>();
-
+        
         // Quick access to specific abilities
         private DashAbility dashAbility;
-
         public DashAbility DashAbility => dashAbility;
 
         private void Awake()
         {
             movementController = GetComponent<IMovementController>();
             photonView = GetComponent<PhotonView>();
-
+            
             InitializeAbilities();
         }
 
@@ -36,23 +34,22 @@ namespace Hanzo.Player.Abilities
         {
             // Create dash ability
             dashAbility = new DashAbility(abilitySettings);
-
-            // Try to find a DashVFXController on the player prefab (explicit wiring)
-            var vfx = GetComponentInChildren<Hanzo.VFX.DashVFXController>(true);
+            
+            // Wire up VFX controller
+            var vfx = GetComponentInChildren<DashVFXController>(true);
             if (vfx != null)
             {
                 dashAbility.SetVFXController(vfx);
-                Debug.Log("PlayerAbilityController: Injected DashVFXController into DashAbility.");
+                Debug.Log("PlayerAbilityController: DashVFXController injected successfully.");
             }
             else
             {
-                Debug.LogWarning("PlayerAbilityController: No DashVFXController found on player. VFX will be auto-searched at init or not play.");
+                Debug.LogWarning("PlayerAbilityController: No DashVFXController found. VFX won't play.");
             }
-
+            
             dashAbility.Initialize(movementController);
             abilities.Add(dashAbility);
         }
-
 
         private void Update()
         {
@@ -69,8 +66,35 @@ namespace Hanzo.Player.Abilities
         public bool TryActivateDash()
         {
             if (!photonView.IsMine) return false;
-            return dashAbility.TryActivate();
-            GetComponent<DashVFXController>().Play();
+            
+            bool activated = dashAbility.TryActivate();
+            
+            // VFX is already handled by DashAbility.TryActivate()
+            // No need to call it again here
+            
+            return activated;
+        }
+        
+        /// <summary>
+        /// Called when player picks up a dash power-up (GDD stacking system)
+        /// </summary>
+        public void AddDashStack()
+        {
+            if (dashAbility != null)
+            {
+                dashAbility.AddStack();
+            }
+        }
+        
+        /// <summary>
+        /// Reset dash to base level (e.g., on respawn or round start)
+        /// </summary>
+        public void ResetDashStacks()
+        {
+            if (dashAbility != null)
+            {
+                dashAbility.ResetStacks();
+            }
         }
 
         private void OnDestroy()
@@ -86,13 +110,24 @@ namespace Hanzo.Player.Abilities
         {
             if (!showDebugInfo || !photonView.IsMine) return;
 
-            GUILayout.BeginArea(new Rect(10, 230, 300, 150));
+            GUILayout.BeginArea(new Rect(10, 230, 300, 180));
             GUILayout.Label("=== ABILITIES ===");
             GUILayout.Label($"Dash Ready: {dashAbility.CanActivate}");
             GUILayout.Label($"Dash Active: {dashAbility.IsActive}");
+            GUILayout.Label($"Dash Stack: {dashAbility.StackLevel}/3");
             GUILayout.Label($"Cooldown: {dashAbility.CooldownRemaining:F2}s");
+            
+            // Show stack effects
+            string stackEffect = dashAbility.StackLevel switch
+            {
+                1 => "Base Dash",
+                2 => "Enhanced (1.5x distance)",
+                3 => "Chain Dash Ready",
+                _ => "Unknown"
+            };
+            GUILayout.Label($"Effect: {stackEffect}");
+            
             GUILayout.EndArea();
         }
     }
-
 }

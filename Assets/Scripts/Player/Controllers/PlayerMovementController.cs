@@ -17,6 +17,7 @@ namespace Hanzo.Player.Controllers
     [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(PlayerInputHandler))]
     [RequireComponent(typeof(PlayerAbilityController))]
+    [RequireComponent(typeof(PlayerStateController))]
     public class PlayerMovementController : MonoBehaviour, IMovementController
     {
         [Header("Settings")]
@@ -35,6 +36,7 @@ namespace Hanzo.Player.Controllers
         public Animator animator;
         private PlayerInputHandler inputHandler;
         private PlayerAbilityController abilityController;
+        private PlayerStateController stateController;
 
         // States
         private IMovementState currentState;
@@ -58,6 +60,12 @@ namespace Hanzo.Player.Controllers
             rb = GetComponent<Rigidbody>();
             inputHandler = GetComponent<PlayerInputHandler>();
             abilityController = GetComponent<PlayerAbilityController>();
+            stateController = GetComponent<PlayerStateController>();
+            
+            if (stateController == null)
+            {
+                Debug.LogError("PlayerMovementController: PlayerStateController component missing! Add it to player prefab.");
+            }
             
             // Try to get animator if not assigned
             if (animator == null)
@@ -116,8 +124,6 @@ namespace Hanzo.Player.Controllers
             idleState = new IdleState();
             movingState = new MovingState(movementSettings);
             
-            // Initialize dashing state after ability controller is ready
-            // This will be done in Start() or after ability is initialized
             currentState = idleState;
             currentState.Enter(this);
         }
@@ -151,19 +157,30 @@ namespace Hanzo.Player.Controllers
                     Debug.Log("DashingState initialized in Update");
                 }
                 
-                UpdateMovementState(); // Check state BEFORE updating current state
+                // CRITICAL: Block all movement updates if stunned
+                if (stateController != null && stateController.IsStunned)
+                {
+                    // Force idle animation during stun
+                    if (animator != null)
+                    {
+                        animator.SetBool(Locomotion.RUN.ToString(), false);
+                        animator.SetBool("DASH", false);
+                    }
+                    
+                    // Don't update movement state while stunned
+                    return;
+                }
+                
+                UpdateMovementState();
                 currentState?.Update(this);
             }
         }
 
         private void UpdateMovementState()
         {
-           
             // Priority 1: Check if dashing
             if (dashingState != null && abilityController != null && abilityController.DashAbility.IsActive)
             {
-               
-                
                 if (currentState != dashingState)
                 {
                     Debug.Log("CHANGING TO DASHING STATE NOW!");
@@ -175,7 +192,6 @@ namespace Hanzo.Player.Controllers
             // Priority 2: Return to appropriate state after dash
             if (currentState == dashingState && !abilityController.DashAbility.IsActive)
             {
-                // Debug.Log("Dash finished, returning to normal state");
                 if (inputHandler.MoveInput.magnitude > 0.1f)
                 {
                     ChangeState(movingState);
@@ -210,12 +226,23 @@ namespace Hanzo.Player.Controllers
 
         private void HandleMoveInput(Vector2 moveInput)
         {
+            // Block input while stunned
+            if (stateController != null && stateController.IsStunned)
+                return;
+            
             if (movingState != null)
                 movingState.SetMoveInput(moveInput);
         }
 
         private void HandleDashInput()
         {
+            // Block dashing while stunned
+            if (stateController != null && stateController.IsStunned)
+            {
+                Debug.Log("Cannot dash: Player is stunned!");
+                return;
+            }
+            
             Debug.Log($"Dash input received! Current state: {currentState?.GetType().Name}");
             
             // Only dash if not already dashing
@@ -226,9 +253,6 @@ namespace Hanzo.Player.Controllers
                 if (abilityController.TryActivateDash())
                 {
                     Debug.Log("Dash activated successfully!");
-                    
-                    // Don't manually change state here - let UpdateMovementState handle it
-                    // This ensures the state changes AFTER the ability is marked as active
                 }
                 else
                 {
@@ -244,6 +268,10 @@ namespace Hanzo.Player.Controllers
         // IMovementController implementation
         public void SetVelocity(Vector3 velocity)
         {
+            // Don't allow manual velocity changes while stunned (knockback uses AddForce)
+            if (stateController != null && stateController.IsStunned)
+                return;
+            
             rb.linearVelocity = velocity;
         }
 
@@ -282,13 +310,24 @@ namespace Hanzo.Player.Controllers
         {
             if (!showDebugInfo) return;
 
-            GUILayout.BeginArea(new Rect(10, 10, 300, 200));
+            GUILayout.BeginArea(new Rect(10, 10, 300, 250));
             GUILayout.Label($"Current State: {currentState?.GetType().Name}");
             GUILayout.Label($"Speed: {CurrentSpeed:F2} m/s");
             GUILayout.Label($"Input: {inputHandler?.MoveInput}");
             GUILayout.Label($"Velocity: {rb.linearVelocity}");
             GUILayout.Label($"Is Mine: {photonView.IsMine}");
             GUILayout.Label($"Camera Active: {(playerCamera != null ? playerCamera.enabled.ToString() : "No Camera")}");
+            
+            // Show stun state
+            if (stateController != null)
+            {
+                GUILayout.Label($"Stunned: {stateController.IsStunned}");
+                if (stateController.IsStunned)
+                {
+                    GUILayout.Label($"Stun Time: {stateController.StunTimeRemaining:F2}s");
+                }
+            }
+            
             GUILayout.EndArea();
         }
     }

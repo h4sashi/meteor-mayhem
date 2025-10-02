@@ -39,6 +39,11 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  enableStacking: 1
+  knockbackForce: 25
+  knockbackRadius: 1.5
+  stunDuration: 2
+  scaleKnockbackWithStack: 1
   trailTime: 0.45
   trailWidth: 0.5
   trailColor:

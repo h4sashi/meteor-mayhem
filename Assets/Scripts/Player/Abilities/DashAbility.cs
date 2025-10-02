@@ -1,6 +1,6 @@
 using UnityEngine;
 using Hanzo.Core.Interfaces;
-using Hanzo.VFX; // make sure this namespace matches your DashVFXController's namespace
+using Hanzo.VFX;
 
 namespace Hanzo.Player.Abilities
 {
@@ -10,30 +10,32 @@ namespace Hanzo.Player.Abilities
         private AbilitySettings settings;
         private TrailRenderer trailRenderer;
         private Animator animator;
-        private DashVFXController vfxController; // <-- reference to VFX controller
+        private DashVFXController vfxController;
         
         private bool isActive;
         private float dashTimer;
         private float cooldownTimer;
         private Vector3 dashDirection;
         
-        // Animation parameter hash - ONLY use Bool, not Trigger
+        // STACKING SYSTEM
+        private int stackLevel = 1; // 1 = base, 2 = enhanced, 3 = chain
+        private int chainDashesRemaining = 0;
+        private float chainDashWindow = 0.5f; // Time window to activate chain dash
+        private float chainDashTimer = 0f;
+        
         private static readonly int IsDashingHash = Animator.StringToHash("DASH");
         
         public string AbilityName => "Dash";
-        public bool CanActivate => !isActive && cooldownTimer <= 0f;
+        public bool CanActivate => !isActive && (cooldownTimer <= 0f || chainDashesRemaining > 0);
         public bool IsActive => isActive;
         public float CooldownRemaining => Mathf.Max(0f, cooldownTimer);
+        public int StackLevel => stackLevel;
         
         public DashAbility(AbilitySettings abilitySettings)
         {
             settings = abilitySettings;
         }
 
-        /// <summary>
-        /// Optional setter so a MonoBehaviour can inject the VFX controller explicitly.
-        /// Recommended: have PlayerAbilityController call this after creating the ability.
-        /// </summary>
         public void SetVFXController(DashVFXController vfx)
         {
             vfxController = vfx;
@@ -43,25 +45,15 @@ namespace Hanzo.Player.Abilities
         {
             controller = movementController;
             
-            // Get the Animator component (prefer controller's animator if exposed)
             animator = controller.Transform.GetComponentInChildren<Animator>(true);
             if (animator == null)
             {
-                Debug.LogError("DashAbility: No Animator found on player! Dash animations will not play.");
-            }
-            else
-            {
-                Debug.Log("DashAbility: Animator found and initialized");
+                Debug.LogError("DashAbility: No Animator found on player!");
             }
 
-            // Best-effort: find DashVFXController on the player transform (only if not injected)
             if (vfxController == null && controller.Transform != null)
             {
                 vfxController = controller.Transform.GetComponentInChildren<DashVFXController>(true);
-                if (vfxController != null)
-                {
-                    Debug.Log("DashAbility: DashVFXController auto-found on player.");
-                }
             }
             
             SetupTrailRenderer();
@@ -69,7 +61,6 @@ namespace Hanzo.Player.Abilities
         
         private void SetupTrailRenderer()
         {
-            // Create trail renderer on the player
             GameObject trailObject = new GameObject("DashTrail");
             trailObject.transform.SetParent(controller.Transform, false);
             trailObject.transform.localPosition = Vector3.zero;
@@ -84,26 +75,77 @@ namespace Hanzo.Player.Abilities
                 : CreateDefaultTrailMaterial();
             trailRenderer.emitting = false;
             
-            // URP specific settings
             trailRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             trailRenderer.receiveShadows = false;
         }
         
         private Material CreateDefaultTrailMaterial()
         {
-            // Create a default material for the trail
             Material mat = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
             if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Color.cyan);
             return mat;
         }
         
+        /// <summary>
+        /// Add a stack level to the dash ability (called when picking up power-up)
+        /// </summary>
+        public void AddStack()
+        {
+            if (stackLevel < 3)
+            {
+                stackLevel++;
+                Debug.Log($"Dash stack increased to level {stackLevel}");
+                
+                // Update trail visual based on stack
+                UpdateTrailForStack();
+            }
+        }
+        
+        /// <summary>
+        /// Reset stacks to base level
+        /// </summary>
+        public void ResetStacks()
+        {
+            stackLevel = 1;
+            chainDashesRemaining = 0;
+            UpdateTrailForStack();
+        }
+        
+        private void UpdateTrailForStack()
+        {
+            if (trailRenderer == null) return;
+            
+            // Make trail more intense with higher stacks
+            switch (stackLevel)
+            {
+                case 1:
+                    trailRenderer.time = settings.TrailTime;
+                    trailRenderer.startWidth = settings.TrailWidth;
+                    break;
+                case 2:
+                    trailRenderer.time = settings.TrailTime * 1.3f;
+                    trailRenderer.startWidth = settings.TrailWidth * 1.2f;
+                    break;
+                case 3:
+                    trailRenderer.time = settings.TrailTime * 1.5f;
+                    trailRenderer.startWidth = settings.TrailWidth * 1.4f;
+                    break;
+            }
+        }
+        
         public bool TryActivate()
         {
-            Debug.Log($"DashAbility.TryActivate called. CanActivate: {CanActivate}");
+            Debug.Log($"DashAbility.TryActivate - Stack: {stackLevel}, ChainRemaining: {chainDashesRemaining}");
             
-            if (!CanActivate) return false;
+            // Check if we can dash (normal cooldown OR chain dash available)
+            if (isActive) return false;
             
-            // Get dash direction from current velocity or forward
+            bool canDashNormally = cooldownTimer <= 0f;
+            bool canChainDash = chainDashesRemaining > 0 && chainDashTimer > 0f;
+            
+            if (!canDashNormally && !canChainDash) return false;
+            
+            // Get dash direction
             Vector3 horizontalVelocity = new Vector3(controller.Velocity.x, 0, controller.Velocity.z);
             
             if (horizontalVelocity.magnitude > 0.1f)
@@ -115,37 +157,31 @@ namespace Hanzo.Player.Abilities
                 dashDirection = controller.Transform.forward;
             }
             
+            // Consume chain dash if using it
+            if (canChainDash)
+            {
+                chainDashesRemaining--;
+                Debug.Log($"Chain dash used! Remaining: {chainDashesRemaining}");
+            }
+            
             isActive = true;
             dashTimer = 0f;
+            
             if (trailRenderer != null)
             {
                 trailRenderer.emitting = true;
                 trailRenderer.Clear();
             }
             
-            // SET THE BOOL TO TRUE
             if (animator != null)
             {
                 animator.SetBool(IsDashingHash, true);
-                Debug.Log("✅ Dash animation BOOL set to TRUE!");
-            }
-            else
-            {
-                Debug.LogWarning("⚠️ Animator is null, cannot play dash animation!");
             }
             
-            // PLAY DASH VFX (null-safe)
             if (vfxController != null)
             {
                 vfxController.Play();
             }
-            else
-            {
-                // optional: log once to know VFX wasn't wired
-                Debug.LogWarning("DashAbility: No DashVFXController assigned or found. VFX will not play.");
-            }
-            
-            Debug.Log($"✅ Dash activated! IsActive: {isActive}, Direction: {dashDirection}");
             
             return true;
         }
@@ -158,11 +194,25 @@ namespace Hanzo.Player.Abilities
                 cooldownTimer -= Time.deltaTime;
             }
             
+            // Update chain dash window
+            if (chainDashesRemaining > 0)
+            {
+                chainDashTimer -= Time.deltaTime;
+                if (chainDashTimer <= 0f)
+                {
+                    chainDashesRemaining = 0;
+                    Debug.Log("Chain dash window expired");
+                }
+            }
+            
             // Update active dash
             if (isActive)
             {
                 dashTimer += Time.deltaTime;
-                float normalizedTime = dashTimer / settings.DashDuration;
+                
+                // Calculate duration and speed based on stack level
+                float actualDuration = GetDashDuration();
+                float normalizedTime = dashTimer / actualDuration;
                 
                 if (normalizedTime >= 1f)
                 {
@@ -170,29 +220,49 @@ namespace Hanzo.Player.Abilities
                     return;
                 }
                 
-                // Apply dash force using curve
+                // Apply dash force with stack multiplier
                 float curveValue = settings.DashSpeedCurve.Evaluate(normalizedTime);
-                Vector3 dashVelocity = dashDirection * (settings.DashSpeed * curveValue);
-                dashVelocity.y = controller.Velocity.y; // Preserve vertical velocity
+                float speedMultiplier = GetSpeedMultiplier();
+                Vector3 dashVelocity = dashDirection * (settings.DashSpeed * speedMultiplier * curveValue);
+                dashVelocity.y = controller.Velocity.y;
                 
                 controller.SetVelocity(dashVelocity);
             }
+        }
+        
+        private float GetDashDuration()
+        {
+            // Stack 2 (2x): Travels further = longer duration
+            return stackLevel == 2 ? settings.DashDuration * 1.4f : settings.DashDuration;
+        }
+        
+        private float GetSpeedMultiplier()
+        {
+            // Stack 2 (2x): Travels further = faster speed
+            return stackLevel == 2 ? 1.5f : 1f;
         }
         
         private void EndDash()
         {
             isActive = false;
             cooldownTimer = settings.DashCooldown;
+            
+            // Stack 3 (3x): Enable chain dash
+            if (stackLevel == 3 && chainDashesRemaining == 0)
+            {
+                chainDashesRemaining = 1; // Allow 1 additional dash (2 total)
+                chainDashTimer = chainDashWindow;
+                Debug.Log("Chain dash ready! Press dash again within 0.5s");
+            }
+            
             if (trailRenderer != null) trailRenderer.emitting = false;
             
-            // SET THE BOOL TO FALSE
             if (animator != null)
             {
                 animator.SetBool(IsDashingHash, false);
-                Debug.Log("✅ Dash animation BOOL set to FALSE!");
             }
             
-            Debug.Log($"Dash ended. Cooldown: {cooldownTimer}s");
+            Debug.Log($"Dash ended. Cooldown: {cooldownTimer}s, Stack: {stackLevel}");
         }
         
         public void Cleanup()
