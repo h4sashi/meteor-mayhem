@@ -6229,6 +6229,7 @@ GameObject:
   - component: {fileID: 3306072856315414700}
   - component: {fileID: -5109069665145312434}
   - component: {fileID: 8851163291489645831}
+  - component: {fileID: -1885384350179096177}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -6654,7 +6655,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3546674311411568189}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f71f2cc335f484e39a22aa97b09be12a, type: 3}
   m_Name: 
@@ -6733,6 +6734,23 @@ MonoBehaviour:
   shakeDuration: 0.15
   uiCanvas: {fileID: 0}
   colorSplashImage: {fileID: 0}
+--- !u!114 &-1885384350179096177
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3546674311411568189}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17c8ad10d3ffa46478412f73a39cc385, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rotationSpeed: 180
+  rotationAxis: {x: 0, y: 1, z: 0}
+  enableBobbing: 1
+  bobbingSpeed: 2
+  bobbingAmount: 0.2
 --- !u!1 &3711478419337760614
 GameObject:
   m_ObjectHideFlags: 0
