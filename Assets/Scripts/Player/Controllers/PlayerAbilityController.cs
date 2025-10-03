@@ -6,7 +6,7 @@ using Photon.Pun;
 
 namespace Hanzo.Player.Abilities
 {
-    public class PlayerAbilityController : MonoBehaviour
+    public class PlayerAbilityController : MonoBehaviourPun
     {
         [Header("Settings")]
         [SerializeField] private AbilitySettings abilitySettings;
@@ -15,19 +15,23 @@ namespace Hanzo.Player.Abilities
         [SerializeField] private bool showDebugInfo = false;
 
         private IMovementController movementController;
-        private PhotonView photonView;
         private List<IAbility> abilities = new List<IAbility>();
         
         // Quick access to specific abilities
         private DashAbility dashAbility;
         public DashAbility DashAbility => dashAbility;
+        
+        // Visual components
+        private TrailRenderer dashTrail;
+        private DashVFXController dashVFX;
+        private Animator animator;
 
         private void Awake()
         {
             movementController = GetComponent<IMovementController>();
-            photonView = GetComponent<PhotonView>();
             
             InitializeAbilities();
+            CacheVisualComponents();
         }
 
         private void InitializeAbilities()
@@ -36,10 +40,10 @@ namespace Hanzo.Player.Abilities
             dashAbility = new DashAbility(abilitySettings);
             
             // Wire up VFX controller
-            var vfx = GetComponentInChildren<DashVFXController>(true);
-            if (vfx != null)
+            dashVFX = GetComponentInChildren<DashVFXController>(true);
+            if (dashVFX != null)
             {
-                dashAbility.SetVFXController(vfx);
+                dashAbility.SetVFXController(dashVFX);
                 Debug.Log("PlayerAbilityController: DashVFXController injected successfully.");
             }
             else
@@ -49,6 +53,19 @@ namespace Hanzo.Player.Abilities
             
             dashAbility.Initialize(movementController);
             abilities.Add(dashAbility);
+        }
+
+        private void CacheVisualComponents()
+        {
+            // Cache components for network sync
+            animator = GetComponentInChildren<Animator>(true);
+            
+            // Find the dash trail that was created by DashAbility
+            Transform trailTransform = transform.Find("DashTrail");
+            if (trailTransform != null)
+            {
+                dashTrail = trailTransform.GetComponent<TrailRenderer>();
+            }
         }
 
         private void Update()
@@ -69,10 +86,71 @@ namespace Hanzo.Player.Abilities
             
             bool activated = dashAbility.TryActivate();
             
-            // VFX is already handled by DashAbility.TryActivate()
-            // No need to call it again here
-            
             return activated;
+        }
+        
+        /// <summary>
+        /// RPC called by local player to show dash visuals on remote clients
+        /// </summary>
+        [PunRPC]
+        private void RPC_PlayDashVisuals()
+        {
+            Debug.Log($"[REMOTE] RPC_PlayDashVisuals called on {gameObject.name}");
+            
+            // Play trail
+            if (dashTrail != null)
+            {
+                dashTrail.emitting = true;
+                dashTrail.Clear();
+                Debug.Log("[REMOTE] Trail started");
+            }
+            else
+            {
+                Debug.LogWarning("[REMOTE] DashTrail not found!");
+            }
+            
+            // Play VFX
+            if (dashVFX != null)
+            {
+                dashVFX.Play();
+                Debug.Log("[REMOTE] VFX played");
+            }
+            else
+            {
+                Debug.LogWarning("[REMOTE] DashVFX not found!");
+            }
+            
+            // Set animation
+            if (animator != null)
+            {
+                animator.SetBool("DASH", true);
+                Debug.Log("[REMOTE] Animation set to DASH");
+            }
+            else
+            {
+                Debug.LogWarning("[REMOTE] Animator not found!");
+            }
+        }
+        
+        /// <summary>
+        /// RPC called by local player to stop dash visuals on remote clients
+        /// </summary>
+        [PunRPC]
+        private void RPC_StopDashVisuals()
+        {
+            Debug.Log($"[REMOTE] RPC_StopDashVisuals called on {gameObject.name}");
+            
+            // Stop trail
+            if (dashTrail != null)
+            {
+                dashTrail.emitting = false;
+            }
+            
+            // Stop animation
+            if (animator != null)
+            {
+                animator.SetBool("DASH", false);
+            }
         }
         
         /// <summary>

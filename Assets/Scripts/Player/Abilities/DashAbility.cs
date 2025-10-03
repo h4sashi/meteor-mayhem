@@ -1,6 +1,7 @@
 using UnityEngine;
 using Hanzo.Core.Interfaces;
 using Hanzo.VFX;
+using Photon.Pun;
 
 namespace Hanzo.Player.Abilities
 {
@@ -11,6 +12,7 @@ namespace Hanzo.Player.Abilities
         private TrailRenderer trailRenderer;
         private Animator animator;
         private DashVFXController vfxController;
+        private PhotonView photonView;
         
         private bool isActive;
         private float dashTimer;
@@ -45,6 +47,7 @@ namespace Hanzo.Player.Abilities
         public void Initialize(IMovementController movementController)
         {
             controller = movementController;
+            photonView = controller.Transform.GetComponent<PhotonView>();
             
             animator = controller.Transform.GetComponentInChildren<Animator>(true);
             if (animator == null)
@@ -171,34 +174,30 @@ namespace Hanzo.Player.Abilities
             isActive = true;
             dashTimer = 0f;
             
+            // Start trail locally
             if (trailRenderer != null)
             {
                 trailRenderer.emitting = true;
                 trailRenderer.Clear();
             }
             
-            // FIX: Set animation parameters in correct order
+            // Set animation locally
             if (animator != null)
             {
-                // Turn OFF run first
-                
-                
-                // Wait one frame in Update to ensure RUN is off, then turn ON dash
-                // For now, set immediately with a debug check
                 animator.SetBool(IsDashingHash, true);
-                
-                
-                Debug.Log($"✅ DASH animation SET TO TRUE. Current DASH value: {animator.GetBool(IsDashingHash)}");
-                Debug.Log($"Animator enabled: {animator.enabled}, GameObject active: {animator.gameObject.activeInHierarchy}");
-            }
-            else
-            {
-                Debug.LogError("❌ Animator is NULL in TryActivate!");
+                Debug.Log($"✅ DASH animation SET TO TRUE");
             }
             
+            // Play VFX locally
             if (vfxController != null)
             {
                 vfxController.Play();
+            }
+            
+            // NETWORK SYNC: Tell other clients to play dash visuals
+            if (photonView != null && photonView.IsMine)
+            {
+                photonView.RPC("RPC_PlayDashVisuals", RpcTarget.OthersBuffered);
             }
             
             return true;
@@ -234,17 +233,15 @@ namespace Hanzo.Player.Abilities
                     return;
                 }
                 
-                float curveValue = settings.DashSpeedCurve.Evaluate(normalizedTime);
-                float speedMultiplier = GetSpeedMultiplier();
-                Vector3 dashVelocity = dashDirection * (settings.DashSpeed * speedMultiplier * curveValue);
-                dashVelocity.y = controller.Velocity.y;
-                
-                controller.SetVelocity(dashVelocity);
-                
-                // DEBUG: Monitor animator state during dash
-                if (animator != null && dashTimer < 0.1f) // Only log in first 0.1s to avoid spam
+                // Only local player controls movement
+                if (photonView != null && photonView.IsMine)
                 {
-                    Debug.Log($"During dash - DASH param: {animator.GetBool(IsDashingHash)}");
+                    float curveValue = settings.DashSpeedCurve.Evaluate(normalizedTime);
+                    float speedMultiplier = GetSpeedMultiplier();
+                    Vector3 dashVelocity = dashDirection * (settings.DashSpeed * speedMultiplier * curveValue);
+                    dashVelocity.y = controller.Velocity.y;
+                    
+                    controller.SetVelocity(dashVelocity);
                 }
             }
         }
@@ -271,12 +268,21 @@ namespace Hanzo.Player.Abilities
                 Debug.Log("Chain dash ready! Press dash again within 0.5s");
             }
             
-            if (trailRenderer != null) trailRenderer.emitting = false;
+            // Stop trail locally
+            if (trailRenderer != null) 
+                trailRenderer.emitting = false;
             
+            // Stop animation locally
             if (animator != null)
             {
                 animator.SetBool(IsDashingHash, false);
-                Debug.Log($"✅ DASH animation SET TO FALSE in EndDash");
+                Debug.Log($"✅ DASH animation SET TO FALSE");
+            }
+            
+            // NETWORK SYNC: Tell other clients to stop dash visuals
+            if (photonView != null && photonView.IsMine)
+            {
+                photonView.RPC("RPC_StopDashVisuals", RpcTarget.OthersBuffered);
             }
             
             Debug.Log($"Dash ended. Cooldown: {cooldownTimer}s, Stack: {stackLevel}");

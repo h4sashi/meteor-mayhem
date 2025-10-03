@@ -41,6 +41,8 @@ MonoBehaviour:
   - RespawnSpaceship
   - RPC_ReceiveKnockback
   - RPC_SyncStunState
+  - RPC_PlayDashVisuals
+  - RPC_StopDashVisuals
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1
