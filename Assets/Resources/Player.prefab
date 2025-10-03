@@ -974,6 +974,7 @@ GameObject:
   m_Component:
   - component: {fileID: 38029478900234316}
   - component: {fileID: 6417471412662964975}
+  - component: {fileID: 5131379465276248587}
   m_Layer: 6
   m_Name: Virtual Camera
   m_TagString: Untagged
@@ -1036,6 +1037,36 @@ MonoBehaviour:
         m_Calls: []
   m_LegacyBlendHint: 0
   m_ComponentOwner: {fileID: 715433658409703335}
+--- !u!114 &5131379465276248587
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 462301677252107258}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e501d18bb52cf8c40b1853ca4904654f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_CollideAgainst:
+    serializedVersion: 2
+    m_Bits: 1
+  m_IgnoreTag: 
+  m_TransparentLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_MinimumDistanceFromTarget: 0.1
+  m_AvoidObstacles: 1
+  m_DistanceLimit: 0
+  m_MinimumOcclusionTime: 0
+  m_CameraRadius: 0.1
+  m_Strategy: 1
+  m_MaximumEffort: 4
+  m_SmoothingTime: 0
+  m_Damping: 0
+  m_DampingWhenOccluded: 0
+  m_OptimalTargetDistance: 0
 --- !u!1 &517028189434744236
 GameObject:
   m_ObjectHideFlags: 0
@@ -4050,6 +4081,7 @@ GameObject:
   - component: {fileID: 3174166866275716507}
   - component: {fileID: 7997454516599434133}
   - component: {fileID: 8843091889908196065}
+  - component: {fileID: 2140967576138367105}
   m_Layer: 6
   m_Name: cm
   m_TagString: Untagged
@@ -4133,6 +4165,23 @@ MonoBehaviour:
   m_YawDamping: 7.9
   m_RollDamping: 0
   m_AngularDamping: 0
+--- !u!114 &2140967576138367105
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2045661209780402384}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68bb026fafb42b14791938953eaace77, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_NoiseProfile: {fileID: 11400000, guid: 69ce8388f6785dd4c8c39915efece2f4, type: 2}
+  m_PivotOffset: {x: 0, y: 0, z: 0}
+  m_AmplitudeGain: 1
+  m_FrequencyGain: 1
+  mNoiseOffsets: {x: 982.72705, y: -690.3036, z: -423.87546}
 --- !u!1 &2092499160507619135
 GameObject:
   m_ObjectHideFlags: 0
@@ -6179,6 +6228,7 @@ GameObject:
   - component: {fileID: -4652079744231020586}
   - component: {fileID: 3306072856315414700}
   - component: {fileID: -5109069665145312434}
+  - component: {fileID: 8851163291489645831}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -6354,7 +6404,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 116
+  m_Constraints: 112
   m_CollisionDetection: 0
 --- !u!114 &8077326750288748694
 MonoBehaviour:
@@ -6609,6 +6659,80 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f71f2cc335f484e39a22aa97b09be12a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &8851163291489645831
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3546674311411568189}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e82b1d714d124487ad99105c10cfe7c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  zoomAmount: 8
+  zoomInDuration: 0.051
+  zoomOutDuration: 0.4
+  zoomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  enableColorSplash: 1
+  splashColor: {r: 0, g: 0.8, b: 1, a: 0.15294118}
+  splashFadeInDuration: 0.08
+  splashHoldDuration: 0.1
+  splashFadeOutDuration: 0.25
+  splashCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  enableShake: 1
+  shakeIntensity: 0.3
+  shakeDuration: 0.15
+  shakeFrequency: 2
+  uiCanvas: {fileID: 0}
+  colorSplashImage: {fileID: 0}
 --- !u!1 &3711478419337760614
 GameObject:
   m_ObjectHideFlags: 0
