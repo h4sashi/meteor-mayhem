@@ -172,8 +172,20 @@ namespace Hanzo.Player.Controllers
                 // Calculate knockback direction
                 Vector3 knockbackDir = (hitCollider.transform.position - transform.position).normalized;
                 
-                // Calculate force with multiplier
-                float knockbackForce = abilitySettings.KnockbackForce * destructibleForceMultiplier;
+                // Calculate force with hybrid multiplier system
+                // Step 1: Base force from settings
+                float knockbackForce = abilitySettings.KnockbackForce;
+                
+                // Step 2: Apply global destructible multiplier (baseline for all destructibles)
+                knockbackForce *= destructibleForceMultiplier;
+                
+                // Step 3: Apply tag-based multiplier (per-object-type scaling)
+                float tagMultiplier = GetForceMultiplierForTag(hitCollider.tag);
+                knockbackForce *= tagMultiplier;
+                
+                // Example calculation:
+                // Base: 15, Global: 1.5x, Tag (LightObject): 2.0x
+                // Result: 15 × 1.5 × 2.0 = 45 force
                 
                 // Stack bonus for destructibles too
                 if (abilityController.DashAbility.StackLevel >= 2)
@@ -296,6 +308,24 @@ namespace Hanzo.Player.Controllers
             // Show detection offset
             Gizmos.color = Color.green;
             Gizmos.DrawLine(transform.position, detectionPos);
+        }
+
+        /// <summary>
+        /// Get force multiplier based on object tag
+        /// Customize this method to create different knockback behaviors per object type
+        /// </summary>
+        private float GetForceMultiplierForTag(string tag)
+        {
+            return tag switch
+            {
+                "LightObject" => 2.0f,      // Light objects fly twice as far
+                "HeavyObject" => 0.5f,      // Heavy objects barely move
+                "Crate" => 1.2f,            // Crates move slightly more
+                "Barrel" => 1.0f,           // Barrels use default force
+                "Explosive" => 1.5f,        // Explosives get extra force
+                "Fragile" => 1.8f,          // Fragile objects move easily
+                _ => 1.0f                   // Default multiplier for untagged objects
+            };
         }
     }
 }
