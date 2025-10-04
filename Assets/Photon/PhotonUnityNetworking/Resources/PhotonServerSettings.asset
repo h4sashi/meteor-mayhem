@@ -43,6 +43,11 @@ MonoBehaviour:
   - RPC_SyncStunState
   - RPC_PlayDashVisuals
   - RPC_StopDashVisuals
+  - RPC_HideStunVFX
+  - RPC_ShowRecoveryVFX
+  - RPC_ShowStunVFX
+  - RPC_ApplyKnockback
+  - RPC_ReceiveDestructibleKnockback
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

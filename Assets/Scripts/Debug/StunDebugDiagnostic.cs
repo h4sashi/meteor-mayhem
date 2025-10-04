@@ -1,6 +1,6 @@
 using UnityEngine;
 using Photon.Pun;
-using Hanzo.Player.Core;
+using Hanzo.Player.Controllers;
 
 namespace Hanzo.DebugTools
 {

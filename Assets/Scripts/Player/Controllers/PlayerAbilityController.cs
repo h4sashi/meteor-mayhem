@@ -1,10 +1,11 @@
 using UnityEngine;
 using System.Collections.Generic;
 using Hanzo.Core.Interfaces;
+using Hanzo.Player.Abilities;
 using Hanzo.VFX;
 using Photon.Pun;
 
-namespace Hanzo.Player.Abilities
+namespace Hanzo.Player.Controllers
 {
     public class PlayerAbilityController : MonoBehaviourPun
     {

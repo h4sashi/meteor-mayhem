@@ -2,7 +2,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using Cinemachine;
-using Hanzo.Player.Abilities;
+using Hanzo.Player.Controllers;
 
 namespace Hanzo.Utilities
 {

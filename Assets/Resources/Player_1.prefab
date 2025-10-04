@@ -6225,13 +6225,11 @@ GameObject:
   - component: {fileID: 6677929837713372587}
   - component: {fileID: 7794131074625322977}
   - component: {fileID: 453229875398877094}
-  - component: {fileID: -4652079744231020586}
-  - component: {fileID: 3306072856315414700}
   - component: {fileID: -5109069665145312434}
   - component: {fileID: 8851163291489645831}
-  - component: {fileID: -1885384350179096177}
+  - component: {fileID: 7188197896337541232}
   m_Layer: 6
-  m_Name: Player
+  m_Name: Player_1
   m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6482,7 +6480,6 @@ MonoBehaviour:
   ObservedComponents:
   - {fileID: -7154862418280041024}
   - {fileID: 789252111010121994}
-  - {fileID: -4652079744231020586}
   sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
@@ -6577,8 +6574,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   stunDuration: 9
   knockbackDrag: 8
-  stunVFXPrefab: {fileID: 0}
-  stunTintColor: {r: 0.7, g: 0.7, b: 0.7, a: 1}
   showDebugInfo: 1
 --- !u!114 &7794131074625322977
 MonoBehaviour:
@@ -6614,40 +6609,19 @@ MonoBehaviour:
   playerLayer:
     serializedVersion: 2
     m_Bits: 64
+  destructibleLayer:
+    serializedVersion: 2
+    m_Bits: 128
   stunDuration: 4
   detectionRadius: 1.42
   detectionOffset: {x: 0, y: 0.5, z: 0.5}
+  destructibleForceMultiplier: 1.5
+  destructibleUpwardForce: 0.6
   hitVFXPrefab: {fileID: 0}
+  destructibleHitVFXPrefab: {fileID: 7736728048456022770, guid: c1ef702b76b504cbd881978488b127a7, type: 3}
   hitSound: {fileID: 0}
+  destructibleHitSound: {fileID: 0}
   showDebugGizmos: 0
---- !u!114 &-4652079744231020586
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3546674311411568189}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 64179f3720bbfe947b7724caa67b7c1d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_SynchronizeVelocity: 1
-  m_SynchronizeAngularVelocity: 1
-  m_TeleportEnabled: 1
-  m_TeleportIfDistanceGreaterThan: 3
---- !u!114 &3306072856315414700
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3546674311411568189}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d9bb77cfd08df4ddfbe7523686516d52, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &-5109069665145312434
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6734,7 +6708,7 @@ MonoBehaviour:
   shakeDuration: 0.15
   uiCanvas: {fileID: 0}
   colorSplashImage: {fileID: 0}
---- !u!114 &-1885384350179096177
+--- !u!114 &7188197896337541232
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -6746,11 +6720,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 17c8ad10d3ffa46478412f73a39cc385, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rotationSpeed: 180
-  rotationAxis: {x: 0, y: 1, z: 0}
-  enableBobbing: 1
-  bobbingSpeed: 2
-  bobbingAmount: 0.2
+  stunVFXPrefab: {fileID: 1206734798321186, guid: b7403227e6478d94e8689f9ab988a606, type: 3}
+  recoveryVFXPrefab: {fileID: 0}
+  stunVFXSpawnPoint: {fileID: 2803134423500048383}
+  stunVFXOffset: {x: 0, y: 1.5, z: 0}
+  recoveryVFXOffset: {x: 0, y: 0.5, z: 0}
+  stunTintColor: {r: 0.7, g: 0.7, b: 0.7, a: 1}
+  applyTinting: 1
+  autoDestroyRecoveryVFX: 1
 --- !u!1 &3711478419337760614
 GameObject:
   m_ObjectHideFlags: 0

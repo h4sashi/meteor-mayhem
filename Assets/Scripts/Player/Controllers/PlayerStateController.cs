@@ -1,23 +1,21 @@
 using UnityEngine;
 using Photon.Pun;
 using System.Collections;
+using Hanzo.VFX;
 
-namespace Hanzo.Player.Core
+namespace Hanzo.Player.Controllers
 {
     /// <summary>
     /// Manages player state including stun, knockback, and recovery
-    /// Place this in Scripts/Player/Core/
+    /// Works with StunVFXController for synchronized visual effects
     /// </summary>
     [RequireComponent(typeof(PhotonView))]
+    [RequireComponent(typeof(StunVFXController))]
     public class PlayerStateController : MonoBehaviour
     {
         [Header("State Settings")]
         [SerializeField] private float stunDuration = 2f;
-        [SerializeField] private float knockbackDrag = 8f; // Higher = stops faster
-        
-        [Header("Visual Feedback")]
-        [SerializeField] private GameObject stunVFXPrefab;
-        [SerializeField] private Color stunTintColor = new Color(0.7f, 0.7f, 0.7f, 1f);
+        [SerializeField] private float knockbackDrag = 8f;
         
         [Header("Debug")]
         [SerializeField] private bool showDebugInfo = false;
@@ -31,9 +29,7 @@ namespace Hanzo.Player.Core
         private PhotonView photonView;
         private Rigidbody rb;
         private Animator animator;
-        private Renderer[] playerRenderers;
-        private Color[] originalColors;
-        private GameObject activeStunVFX;
+        private StunVFXController vfxController;
         
         // Animation parameter hashes
         private static readonly int StunnedHash = Animator.StringToHash("STUNNED");
@@ -53,22 +49,16 @@ namespace Hanzo.Player.Core
             photonView = GetComponent<PhotonView>();
             rb = GetComponent<Rigidbody>();
             animator = GetComponentInChildren<Animator>(true);
+            vfxController = GetComponent<StunVFXController>();
             
             if (animator == null)
             {
                 Debug.LogWarning("PlayerStateController: No Animator found. Stun animations will not play.");
             }
             
-            // Cache all renderers for color tinting
-            playerRenderers = GetComponentsInChildren<Renderer>();
-            originalColors = new Color[playerRenderers.Length];
-            
-            for (int i = 0; i < playerRenderers.Length; i++)
+            if (vfxController == null)
             {
-                if (playerRenderers[i].material.HasProperty("_BaseColor"))
-                {
-                    originalColors[i] = playerRenderers[i].material.GetColor("_BaseColor");
-                }
+                Debug.LogError("PlayerStateController: StunVFXController component is missing!");
             }
         }
 
@@ -79,28 +69,20 @@ namespace Hanzo.Player.Core
         {
             if (!photonView.IsMine) return;
             
-            Debug.Log($"[LOCAL] ApplyKnockbackAndStun called - Direction: {knockbackDirection}, Force: {knockbackForce}");
+            Debug.Log($"[LOCAL] ApplyKnockbackAndStun - Direction: {knockbackDirection}, Force: {knockbackForce}");
             
-            // Apply knockback force - CRITICAL: Use Impulse for immediate effect
+            // Apply knockback force
             if (rb != null)
             {
-                // Stop current movement first
                 rb.linearVelocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
                 
-                // Calculate knockback vector
                 Vector3 knockbackVelocity = knockbackDirection.normalized * knockbackForce;
-                knockbackVelocity.y = knockbackForce * 0.4f; // Add upward component
+                knockbackVelocity.y = knockbackForce * 0.4f;
                 
-                // Apply directly to velocity for instant effect
                 rb.linearVelocity = knockbackVelocity;
                 
-                Debug.Log($"[PHYSICS] Knockback velocity set to: {rb.linearVelocity}");
-                Debug.Log($"[PHYSICS] Rigidbody isKinematic: {rb.isKinematic}, mass: {rb.mass}");
-            }
-            else
-            {
-                Debug.LogError("[PHYSICS] Rigidbody is null! Cannot apply knockback.");
+                Debug.Log($"[PHYSICS] Knockback velocity: {rb.linearVelocity}");
             }
             
             // Apply stun
@@ -115,7 +97,6 @@ namespace Hanzo.Player.Core
 
         private void StartStun(float duration)
         {
-            // Prevent re-entry if already stunned
             if (isStunned)
             {
                 Debug.LogWarning("StartStun called but player is already stunned. Ignoring.");
@@ -135,7 +116,7 @@ namespace Hanzo.Player.Core
             isStunned = true;
             stunTimer = duration;
             
-            Debug.Log($"Player stunned for {duration}s");
+            Debug.Log($"[PlayerState] Stunned for {duration}s");
             
             // SET STUNNED ANIMATION
             if (animator != null)
@@ -144,10 +125,14 @@ namespace Hanzo.Player.Core
                 Debug.Log("✅ STUNNED animation parameter set to TRUE");
             }
             
-            // Apply visual effects
-            ApplyStunVisuals();
+            // APPLY VISUAL EFFECTS via VFXController
+            if (vfxController != null)
+            {
+                vfxController.ApplyStunTint();
+                vfxController.ShowStunVFX();
+            }
             
-            // Temporarily increase drag to slow down faster after knockback
+            // Temporarily increase drag for knockback slowdown
             float originalDrag = rb.linearDamping;
             rb.linearDamping = knockbackDrag;
             
@@ -161,7 +146,7 @@ namespace Hanzo.Player.Core
             }
             
             // START RECOVERY - Trigger Get Up animation
-            Debug.Log("Stun ended, starting Get Up animation");
+            Debug.Log("[PlayerState] Stun ended, starting Get Up animation");
             
             if (animator != null)
             {
@@ -170,13 +155,19 @@ namespace Hanzo.Player.Core
                 Debug.Log("✅ GETUP animation parameter set to TRUE");
             }
             
-            // Wait for Get Up animation to complete
-            // You can adjust this duration based on your Get Up animation length
-            float getUpDuration = GetAnimationLength("Get Up"); // We'll implement this helper
+            // STOP STUN VFX and SPAWN RECOVERY VFX
+            if (vfxController != null)
+            {
+                vfxController.HideStunVFX();
+                vfxController.ShowRecoveryVFX();
+            }
+            
+            // Wait for Get Up animation
+            float getUpDuration = GetAnimationLength("Get Up");
             
             if (getUpDuration <= 0)
             {
-                getUpDuration = 0.8f; // Fallback duration
+                getUpDuration = 0.8f;
                 Debug.LogWarning("Could not determine Get Up animation length, using fallback: 0.8s");
             }
             
@@ -194,10 +185,15 @@ namespace Hanzo.Player.Core
                 Debug.Log("✅ GETUP animation parameter set to FALSE");
             }
             
-            RemoveStunVisuals();
+            // Remove visual tint
+            if (vfxController != null)
+            {
+                vfxController.RemoveStunTint();
+            }
+            
             OnStunEnded?.Invoke();
             
-            Debug.Log("Player fully recovered from stun");
+            Debug.Log("[PlayerState] Fully recovered from stun");
             
             // Sync recovery to other clients
             if (photonView.IsMine)
@@ -206,9 +202,6 @@ namespace Hanzo.Player.Core
             }
         }
         
-        /// <summary>
-        /// Helper to get animation clip length by state name
-        /// </summary>
         private float GetAnimationLength(string stateName)
         {
             if (animator == null) return 0f;
@@ -228,43 +221,6 @@ namespace Hanzo.Player.Core
             return 0f;
         }
 
-        private void ApplyStunVisuals()
-        {
-            // Tint player mesh
-            for (int i = 0; i < playerRenderers.Length; i++)
-            {
-                if (playerRenderers[i].material.HasProperty("_BaseColor"))
-                {
-                    playerRenderers[i].material.SetColor("_BaseColor", stunTintColor);
-                }
-            }
-            
-            // Spawn stun VFX
-            if (stunVFXPrefab != null)
-            {
-                activeStunVFX = Instantiate(stunVFXPrefab, transform);
-                activeStunVFX.transform.localPosition = Vector3.up * 1.5f;
-            }
-        }
-
-        private void RemoveStunVisuals()
-        {
-            // Restore original colors
-            for (int i = 0; i < playerRenderers.Length; i++)
-            {
-                if (playerRenderers[i].material.HasProperty("_BaseColor"))
-                {
-                    playerRenderers[i].material.SetColor("_BaseColor", originalColors[i]);
-                }
-            }
-            
-            // Destroy stun VFX
-            if (activeStunVFX != null)
-            {
-                Destroy(activeStunVFX);
-            }
-        }
-
         [PunRPC]
         private void RPC_SyncStunState(bool stunned, float duration)
         {
@@ -279,9 +235,14 @@ namespace Hanzo.Player.Core
                     animator.SetBool(StunnedHash, true);
                 }
                 
-                ApplyStunVisuals();
+                // Apply VFX via controller
+                if (vfxController != null)
+                {
+                    vfxController.ApplyStunTint();
+                    vfxController.ShowStunVFX();
+                }
                 
-                // Start a coroutine to handle get-up for remote players
+                // Start coroutine to handle get-up for remote players
                 StartCoroutine(RemoteStunVisualCoroutine(duration));
             }
             else
@@ -295,7 +256,12 @@ namespace Hanzo.Player.Core
                     animator.SetBool(GetUpHash, false);
                 }
                 
-                RemoveStunVisuals();
+                // Remove VFX via controller
+                if (vfxController != null)
+                {
+                    vfxController.HideStunVFX();
+                    vfxController.RemoveStunTint();
+                }
             }
         }
         
@@ -314,6 +280,13 @@ namespace Hanzo.Player.Core
                 animator.SetBool(GetUpHash, true);
             }
             
+            // Stop stun VFX and show recovery VFX
+            if (vfxController != null)
+            {
+                vfxController.HideStunVFX();
+                vfxController.ShowRecoveryVFX();
+            }
+            
             // Wait for get-up animation
             float getUpDuration = GetAnimationLength("Get Up");
             if (getUpDuration <= 0) getUpDuration = 0.8f;
@@ -326,19 +299,27 @@ namespace Hanzo.Player.Core
                 animator.SetBool(GetUpHash, false);
             }
             
-            RemoveStunVisuals();
+            // Remove visual tint
+            if (vfxController != null)
+            {
+                vfxController.RemoveStunTint();
+            }
         }
 
         private void OnGUI()
         {
             if (!showDebugInfo || !photonView.IsMine) return;
             
-            GUILayout.BeginArea(new Rect(10, 400, 300, 100));
+            GUILayout.BeginArea(new Rect(10, 400, 300, 120));
             GUILayout.Label("=== PLAYER STATE ===");
             GUILayout.Label($"Stunned: {isStunned}");
             if (isStunned)
             {
                 GUILayout.Label($"Recovery in: {stunTimer:F2}s");
+            }
+            if (vfxController != null)
+            {
+                GUILayout.Label($"VFX Active: {vfxController.IsStunVFXActive}");
             }
             GUILayout.EndArea();
         }

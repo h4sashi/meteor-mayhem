@@ -1,6 +1,6 @@
 using UnityEngine;
 using Hanzo.Core.Interfaces;
-using Hanzo.Player.Core;
+using Hanzo.Player.Controllers;
 
 namespace Hanzo.Player.Movement.States
 {
